@@ -80,30 +80,84 @@ def salvar_csv(registros: list[dict], caminho_saida: Path, colunas: list[str]) -
 
 
 def limpar_clientes(bronze: list[dict]) -> list[dict]:
-    """
-    Aplica as regras de limpeza de clientes descritas no topo do arquivo.
-    Retorna a lista final (sem duplicatas, sem e-mails inválidos).
-    """
-    # TODO: implemente a limpeza de clientes
-    raise NotImplementedError("Implemente limpar_clientes()")
+    clientes_dict = {}
 
+    for linha in bronze:
+        email = linha["email"].strip().lower()
+        if "@" not in email:
+              continue
+        
+        cliente_limpo = linha.copy()
+        cliente_limpo["id_cliente"] = int(linha["id_cliente"])
+        cliente_limpo["email"] = email
+        cliente_limpo["estado"] = str(linha["estado"]).strip().upper()
+
+        clientes_dict[cliente_limpo["id_cliente"]] = cliente_limpo
+    return list(clientes_dict.values())
 
 def limpar_produtos(bronze: list[dict]) -> list[dict]:
-    """
-    Aplica as regras de limpeza de produtos descritas no topo do arquivo.
-    """
-    # TODO: implemente a limpeza de produtos
-    raise NotImplementedError("Implemente limpar_produtos()")
+    produtos_dict = {}
+    
+    for linha in bronze:
+      id_produto = int(linha["id_produto"])
+
+      if id_produto in produtos_dict:
+            continue
+      
+      produto_limpo = linha.copy()
+      produto_limpo["id_produto"] = int(linha["id_produto"])
+      produto_limpo["preco"] = float(linha["preco"].replace(",","."))
+      produto_limpo["categoria"] = linha["categoria"].strip().title()
+      if linha["ativo"] == "sim" or linha["ativo"] == "1":
+        produto_limpo["ativo"] = 1
+      else:
+        produto_limpo["ativo"] = 0
+
+        produtos_dict[id_produto] = produto_limpo
+    return list(produtos_dict.values())
+
+            
 
 
 def limpar_vendas(bronze: list[dict], ids_clientes_validos: set[int], ids_produtos_validos: set[int]) -> list[dict]:
-    """
-    Aplica as regras de limpeza de vendas descritas no topo do arquivo,
-    incluindo o filtro de integridade referencial contra clientes/produtos
-    já limpos.
-    """
-    # TODO: implemente a limpeza de vendas
-    raise NotImplementedError("Implemente limpar_vendas()")
+    vendas_dict = {}
+
+    for linha in bronze:
+        qnt_str = str(linha["quantidade"]).strip()
+        if not qnt_str or int(qnt_str) <= 0:
+            continue
+        quantidade = int(qnt_str)
+
+        vt_str = str(linha["valor_total"]).strip().replace(",", ".")
+        if not vt_str:
+            continue
+        valor_total = float(vt_str)
+
+        id_venda = int(linha["id_venda"])
+        id_cliente = int(linha["id_cliente"])
+        id_produto = int(linha["id_produto"])
+
+        if id_cliente not in ids_clientes_validos or id_produto not in ids_produtos_validos:
+            continue
+
+        data_str = str(linha["data_venda"]).strip()
+        if "/" in data_str:
+            dia, mes, ano = data_str.split("/")
+            data_venda = f"{ano}-{mes}-{dia}"
+        else:
+            data_venda = data_str
+
+        venda_limpa = linha.copy()
+        venda_limpa["id_venda"] = id_venda
+        venda_limpa["id_cliente"] = id_cliente
+        venda_limpa["id_produto"] = id_produto
+        venda_limpa["data_venda"] = data_venda
+        venda_limpa["quantidade"] = quantidade
+        venda_limpa["valor_total"] = valor_total
+
+        vendas_dict[id_venda] = venda_limpa
+
+    return list(vendas_dict.values())
 
 
 def main() -> None:
